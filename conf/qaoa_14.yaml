@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+defaults:
+  - train
+  - _self_
+
+mode: fixed
+
+# The grid every result on this benchmark was measured on. The cost model is
+# transpose symmetric, since travel time is the largest of the two spans and the
+# entangling zone enters as a flat overhead per gate, so ``row`` by ``col`` and its
+# transpose are the same instance family. A seed still draws a different layout in
+# each, so one orientation has to be fixed and this is it.
+board:
+  row: 10
+  col: 4
+
+benchmark:
+  id: qaoa-14
+
+training:
+  # Four times the experience of 20 environments at the same wall clock, because
+  # the policy is kernel launch bound rather than FLOP bound on a small board.
+  num_envs: 80
+  num_minibatches: 2
+  num_iterations: 2000
+
+save_frequency: 2000

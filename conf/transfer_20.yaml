@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+defaults:
+  - train
+  - _self_
+
+mode: transferable
+
+project:
+  name: neutral-atom-final-transferable
+
+exp_tag: v20
+n_components: 300
+
+benchmark:
+  id: transfer
+  problem: pauli
+  n_atoms: null
+  # One atom count for the whole pool: on a mixed pool a cost says which circuit
+  # was drawn rather than how well it was scheduled, and the 20 to 25 atom pool
+  # spread its costs by a factor of two, which is more than any schedule does.
+  min_atoms: 20
+  max_atoms: 20
+  n_terms: 16
+  k_local: 4
+  count: 30
+  test_count: 10
+
+# Forty sites, the size at which imitation reaches decisions worth making: the
+# regret it settles at is 0.163 against a break even of 0.201, where on a hundred
+# sites it is 0.559 against 0.575.
+board:
+  row: 5
+  col: 8
+
+training:
+  num_iterations: 20000
+
+test:
+  training_exp_tag: v20
+  training_model_path: outputs/${project.name}/${test.training_exp_tag}/model

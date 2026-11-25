@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+defaults:
+  - train
+  - _self_
+
+mode: transferable
+
+project:
+  name: neutral-atom-final-transferable
+
+exp_tag: v100
+n_components: 300
+
+benchmark:
+  id: transfer
+  problem: pauli
+  n_atoms: null
+  # One atom count for the whole pool: on a mixed pool a cost says which circuit
+  # was drawn rather than how well it was scheduled.
+  min_atoms: 100
+  max_atoms: 100
+  n_terms: 80
+  k_local: 6
+  count: 30
+  test_count: 10
+
+# Two hundred sites for a hundred atoms, the same half empty board the 40 and 100
+# site pools use, so what changes here is the size of the problem and nothing else.
+board:
+  row: 20
+  col: 10
+
+training:
+  num_iterations: 20000
+
+test:
+  training_exp_tag: v100
+  training_model_path: outputs/${project.name}/${test.training_exp_tag}/model

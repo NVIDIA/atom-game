@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+defaults:
+  - train
+  - _self_
+
+mode: fixed
+
+board:
+  row: 20
+  col: 5
+
+benchmark:
+  id: qnn-50
+
+training:
+  # An episode here covers far more components than the 14 atom boards, so an
+  # iteration costs proportionally more and the count comes down to fit a night.
+  num_envs: 20
+  num_minibatches: 16
+  num_iterations: 1000
+
+save_frequency: 1000

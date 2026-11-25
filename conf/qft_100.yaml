@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+defaults:
+  - train
+  - _self_
+
+mode: fixed
+
+board:
+  row: 20
+  col: 10
+
+benchmark:
+  id: qft-100
+
+training:
+  # Attention over two hundred sites needs twenty five times the memory of the
+  # small board, so the minibatch count goes up as the iteration count comes down.
+  num_envs: 20
+  num_minibatches: 32
+  num_iterations: 500
+
+save_frequency: 500

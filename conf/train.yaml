@@ -1,0 +1,254 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+mode: fixed
+task: train
+
+project:
+  name: neutral-atom-final-v5
+
+exp_tag: ${benchmark.id}
+output: outputs/${project.name}/${exp_tag}
+model_path: ${output}/model
+circuit_path: ${output}/circuit.json
+test_circuit_path: ${output}/circuit_test.json
+# Where a fixed benchmark's circuit is kept once built. Building it pulls a shared
+# dataset file through a lock, so processes that share an instance cannot build it
+# at the same time and should read one copy instead.
+circuit_cache: null
+
+load_model: false
+load_checkpoint: false
+init_model: null
+save_frequency: 10
+seed: 0
+n_components: 0
+
+hydra:
+  run:
+    dir: ${output}
+  output_subdir: hydra
+
+benchmark:
+  id: qnn-100
+  problem: qnn
+  n_atoms: 100
+  truncate: 0
+  min_atoms: 40
+  max_atoms: 50
+  n_terms: 40
+  k_local: 6
+  count: 30
+  layers: 343
+  gates_per_layer: 12
+  kwargs:
+    J: -1
+    U: 2
+    periodic: false
+    encoding: jw
+    method: lt
+    reps: 2
+
+board:
+  row: 20
+  col: 10
+  init: random
+
+device:
+  idle_error: 0.02
+  move_error: 0.002
+  inter_zone_time: 10
+
+env:
+  feature_count: 5
+  player_layer: 2
+
+policy:
+  threshold: 0
+  merge_move: true
+  pool: mean
+  # What the one step estimator contributes inside the policy. ``feature`` adds its
+  # cost to each candidate's embedding, ``prior`` makes the logits its ranking plus
+  # a learned correction, so the policy starts as greedy. Off, the estimator is only
+  # used outside the policy, as the shortlist mask.
+  cost: "off"
+  geometry: "off"
+  cross_task_layers: 0
+  # Tell each lookahead task how far ahead it is and how much its atoms still have
+  # to do afterwards; without it the tasks are encoded in complete isolation.
+  task_context: false
+  orthogonal_init: false
+  mlp_depth: 1
+  player_embedding_dim: 40
+  time_embedding_dim: 40
+  gate_embedding_dim: 20
+  move_embedding_dim: 20
+  move_layers: 3
+  gate_layers: 3
+  n_heads: 4
+  gate_hidden_dim: 20
+  move_hidden_dim: 20
+  p_hsize: 10
+
+system:
+  device: cuda
+
+training:
+  cuda: true
+  track: false
+  total_timesteps: 500000
+  learning_rate: 2.5e-4
+  num_envs: 20
+  num_steps: 0
+  anneal_lr: true
+  gamma: 0.99
+  gae_lambda: 0.95
+  num_minibatches: 10
+  update_epochs: 4
+  norm_adv: true
+  # Scope of the advantage statistics before the minibatch step: ``batch`` mixes
+  # every environment, ``env`` keeps each environment to itself, which with a pool
+  # of circuits means one circuit at a time. Only the per atom update honours it.
+  adv_scope: batch
+  reward_scale: 1.0
+  normalize_reward: false
+  rollout_multiplier: 1
+  turn_actions: false
+  find_unused_parameters: true
+  async_envs: false
+  clip_coef: 0.2
+  clip_vloss: true
+  ent_coef: 0.01
+  target_entropy: null
+  ent_coef_lr: 0.1
+  ent_control: linear
+  ent_coef_min: 1.0e-5
+  ent_coef_max: 1.0
+  lr_floor: 0.0
+  sil_coef: 0.0
+  sil_capacity: 8
+  sil_batch_ratio: 0.25
+  sil_seed_episodes: 0
+  sil_seed_epsilon: 0.02
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  target_kl: null
+  batch_size: 0
+  minibatch_size: 0
+  num_iterations: 5000
+
+beam:
+  # Greedy is width and branch of one: what this adds is keeping several partial
+  # reconfigurations alive, since their cost only becomes comparable once the
+  # whole set of moves is known.
+  width: 4
+  branch: 4
+  turns: 1
+
+# What benchmark_search.py traces: cost against cost model evaluations spent, for
+# the searches a learned policy is measured against.
+search:
+  # Traced in this order. ``no_reconfiguration`` consults the model not at all, so
+  # it sits at the budget a learned policy pays for its rollout and prices what the
+  # environment alone asks for.
+  policies:
+    - no_reconfiguration
+    - greedy
+    - sampled_greedy
+    - beam
+  # Noisy restarts to trace. The curve is kept on a one two five ladder, so a
+  # large budget costs little to store, and every restart's cost is kept anyway.
+  restarts: 100
+  epsilon: 0.02
+  # Beam settings to trace, cheapest first. Width and branch of one is greedy, so
+  # the sweep says what widening the beam buys for the calls it costs.
+  sweep:
+    - width: 2
+      branch: 2
+      turns: 1
+    - width: 4
+      branch: 4
+      turns: 1
+    - width: 4
+      branch: 4
+      turns: 2
+  # Demonstrations a warm start would be fitted to, priced in the same currency.
+  # Zero uses ``imitation.episodes``.
+  demonstrations: 0
+  out: outputs/search_budget
+
+imitation:
+  episodes: 200
+  epsilon: 0.05
+  # Rounds of DAgger: the episode budget is split between them, so more rounds
+  # trade coverage of the expert's own states for coverage of the policy's.
+  rounds: 1
+  value_coef: 0.5
+  # Spread this much of the target over the legal moves, which sets the entropy
+  # the warm start hands to PPO. About 0.01 lands near a target entropy of 0.06.
+  move_weight: 1.0
+  # Fit the expert's whole cost ranking rather than its choice alone, at a
+  # temperature measured in units of each state's own spread of candidate costs.
+  soft_temperature: 0.0
+  # Where that temperature ends up by the last epoch, if set: the ranking is
+  # what has to be learned, a confident policy is what PPO has to be handed.
+  final_temperature: 0.0
+  smoothing: 0.0
+  # Fit only the states where the expert moves an atom, which asks whether those
+  # decisions are learnable at all rather than whether they survive the majority.
+  moves_only: false
+  # ``choice`` fits which site the expert took, ``cost`` fits how much every site
+  # would cost and reads the choice off the argmax. Break even for moving at all
+  # is a regret below what staying costs, which is 0.57 per decision on the
+  # transferable board, so the target has to be the ranking near the top.
+  objective: choice
+  # Temperature of the weight the cost objective puts on the top of the ranking;
+  # zero spreads it evenly over the legal sites.
+  cost_focus: 0.0
+  # ``regret`` keeps the epoch whose chosen moves were cheapest, ``last`` the
+  # final one, which is also the most accurate and the least useful.
+  select: last
+  # Who demonstrates. ``sampled_greedy`` keeps the cheapest of ``demo_restarts``
+  # noisy rollouts; any other name in POLICIES is played once, which is what a
+  # deterministic search wants and gives labels with a reason behind them.
+  demo_policy: sampled_greedy
+  demo_restarts: 0
+  demo_epsilon: 0.02
+  # Label the states the learner reaches instead of the ones the teacher walks
+  # through, which needs a teacher that decides per state and weights to walk with.
+  dagger: false
+  init_model: null
+  roll_in_temperature: 0.05
+  # How much of the target the demonstrated move takes from the cost ranking.
+  demo_weight: 0.5
+  # Where this process writes what it collected, and the glob a fit reads instead
+  # of collecting: the restarts parallelise across processes, the fit does not.
+  dataset_path: null
+  dataset_inputs: null
+  collect_only: false
+  # Let the estimator propose the k cheapest sites and have the policy only choose
+  # among those. Zero leaves it ranking the whole board, which on a pool it cannot
+  # do well enough for moving to beat staying.
+  shortlist: 0
+  eval_episodes: 5
+  # Files of demonstrations to keep, in order; zero uses every match.
+  dataset_limit: 0
+  # Boards played per epoch when ``select: cost`` decides which weights to keep.
+  select_episodes: 3
+  epochs: 20
+  batch_size: 512
+  learning_rate: 1.0e-3
+  val_fraction: 0.1
+  save_path: null
+
+test:
+  training_exp_tag: null
+  training_model_path: null
+
+logger: wandb
+logger_path: outputs/logs
+tmp_dir: tmp
+del_temperature: 0
+visualizer: null
+
+run_name_prefix: ${project.name}_${exp_tag}_

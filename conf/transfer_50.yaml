@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+defaults:
+  - train
+  - _self_
+
+mode: transferable
+
+project:
+  name: neutral-atom-final-transferable
+
+exp_tag: v1
+n_components: 300
+
+benchmark:
+  id: transfer
+  problem: pauli
+  n_atoms: null
+  # One atom count for the whole pool, as on the 100 atom pool: on a mixed pool a
+  # cost says which circuit was drawn rather than how well it was scheduled. Fifty
+  # is the count at which this pool matches the larger one in the two respects a
+  # cost is otherwise sensitive to, 0.8 terms per qubit and a half empty board.
+  min_atoms: 50
+  max_atoms: 50
+  n_terms: 40
+  k_local: 6
+  count: 30
+  # Circuits drawn fresh for evaluation, so a single held out circuit is not
+  # what the transfer claim rests on.
+  test_count: 10
+
+board:
+  row: 20
+  col: 5
+
+training:
+  num_iterations: 20000
+
+test:
+  training_exp_tag: v1
+  training_model_path: outputs/${project.name}/${test.training_exp_tag}/model

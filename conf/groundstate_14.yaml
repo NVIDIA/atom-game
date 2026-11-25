@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+defaults:
+  - train
+  - _self_
+
+mode: fixed
+
+board:
+  row: 10
+  col: 4
+
+benchmark:
+  id: groundstate-14
+
+training:
+  num_envs: 80
+  num_minibatches: 2
+  num_iterations: 2000
+
+save_frequency: 2000
